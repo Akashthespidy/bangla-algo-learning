@@ -5,26 +5,24 @@ import Link from "next/link";
 import { ArrowLeft, Bookmark, ArrowRight } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { AlgorithmMetadata } from "@/lib/algorithms";
+import { useAtom } from "jotai";
+import { bookmarksAtom } from "@/lib/store";
 
 interface BookmarksClientProps {
   allAlgorithms: AlgorithmMetadata[];
 }
 
 export default function BookmarksClient({ allAlgorithms }: BookmarksClientProps) {
-  const [bookmarks, setBookmarks] = useState<string[]>([]);
+  const [bookmarks] = useAtom(bookmarksAtom);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("bookmarks");
-      if (saved) {
-        setBookmarks(JSON.parse(saved));
-      }
-    } catch (e) {
-      console.error(e);
-    }
+    setMounted(true);
   }, []);
 
-  const bookmarkedAlgos = allAlgorithms.filter((algo) => bookmarks.includes(algo.slug));
+  const bookmarkedAlgos = mounted
+    ? allAlgorithms.filter((algo) => bookmarks.includes(algo.slug))
+    : [];
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty.toLowerCase()) {

@@ -7,6 +7,8 @@ import { Search, ArrowRight, Bookmark, Clock, Code, Award, Layers, Sparkles } fr
 import { AlgorithmMetadata } from "@/lib/algorithms";
 import { motion } from "framer-motion";
 import { useSearchParams } from "next/navigation";
+import { useAtom } from "jotai";
+import { bookmarksAtom, recentlyViewedAtom } from "@/lib/store";
 
 interface HomeClientProps {
   initialAlgorithms: AlgorithmMetadata[];
@@ -15,8 +17,9 @@ interface HomeClientProps {
 export default function HomeClient({ initialAlgorithms }: HomeClientProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [bookmarks, setBookmarks] = useState<string[]>([]);
-  const [recentlyViewed, setRecentlyViewed] = useState<string[]>([]);
+  const [bookmarks] = useAtom(bookmarksAtom);
+  const [recentlyViewed] = useAtom(recentlyViewedAtom);
+  const [mounted, setMounted] = useState(false);
 
   const searchParams = useSearchParams();
   const urlSearch = searchParams ? searchParams.get("search") || "" : "";
@@ -28,17 +31,8 @@ export default function HomeClient({ initialAlgorithms }: HomeClientProps) {
     }
   }, [urlSearch]);
 
-  // Load bookmarks & recently viewed from localStorage on client side
   useEffect(() => {
-    const savedBookmarks = localStorage.getItem("bookmarks");
-    if (savedBookmarks) {
-      setBookmarks(JSON.parse(savedBookmarks));
-    }
-
-    const savedRecent = localStorage.getItem("recentlyViewed");
-    if (savedRecent) {
-      setRecentlyViewed(JSON.parse(savedRecent));
-    }
+    setMounted(true);
   }, []);
 
   const categories = [
@@ -107,7 +101,7 @@ export default function HomeClient({ initialAlgorithms }: HomeClientProps) {
                 শুরু করুন
                 <ArrowRight size={16} />
               </a>
-              {recentlyViewed.length > 0 && (
+              {mounted && recentlyViewed.length > 0 && (
                 <Link
                   href={`/algorithms/${recentlyViewed[0]}`}
                   className="inline-flex items-center justify-center px-6 py-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-zinc-700 dark:text-zinc-300 font-semibold transition-all"

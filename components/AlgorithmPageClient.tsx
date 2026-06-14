@@ -9,54 +9,39 @@ import { CodeSection } from "@/components/CodeSection";
 import { PracticeSection } from "@/components/PracticeSection";
 import { Markdown } from "@/lib/markdown";
 import { AlgorithmDetails } from "@/lib/algorithms";
+import { useAtom } from "jotai";
+import { bookmarksAtom, recentlyViewedAtom } from "@/lib/store";
 
 interface AlgorithmPageClientProps {
   algorithm: AlgorithmDetails;
 }
 
 export default function AlgorithmPageClient({ algorithm }: AlgorithmPageClientProps) {
-  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [bookmarks, setBookmarks] = useAtom(bookmarksAtom);
+  const [, setRecentlyViewed] = useAtom(recentlyViewedAtom);
   const [copiedShare, setCopiedShare] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Save to recently viewed
-    try {
-      const recent = localStorage.getItem("recentlyViewed") 
-        ? JSON.parse(localStorage.getItem("recentlyViewed")!) 
-        : [];
-      const newRecent = [algorithm.slug, ...recent.filter((s: string) => s !== algorithm.slug)].slice(0, 6);
-      localStorage.setItem("recentlyViewed", JSON.stringify(newRecent));
-    } catch (e) {
-      console.error(e);
-    }
+    setMounted(true);
+  }, []);
 
-    // Check if bookmarked
-    try {
-      const bookmarks = localStorage.getItem("bookmarks") 
-        ? JSON.parse(localStorage.getItem("bookmarks")!) 
-        : [];
-      setIsBookmarked(bookmarks.includes(algorithm.slug));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [algorithm.slug]);
+  useEffect(() => {
+    if (!mounted) return;
+    setRecentlyViewed((prev) => {
+      const filtered = prev.filter((s) => s !== algorithm.slug);
+      return [algorithm.slug, ...filtered].slice(0, 6);
+    });
+  }, [algorithm.slug, mounted, setRecentlyViewed]);
+
+  const showBookmarked = mounted && bookmarks.includes(algorithm.slug);
 
   const toggleBookmark = () => {
-    try {
-      const bookmarks = localStorage.getItem("bookmarks") 
-        ? JSON.parse(localStorage.getItem("bookmarks")!) 
-        : [];
-      let updated;
-      if (bookmarks.includes(algorithm.slug)) {
-        updated = bookmarks.filter((s: string) => s !== algorithm.slug);
-        setIsBookmarked(false);
-      } else {
-        updated = [...bookmarks, algorithm.slug];
-        setIsBookmarked(true);
-      }
-      localStorage.setItem("bookmarks", JSON.stringify(updated));
-    } catch (e) {
-      console.error(e);
+    if (!mounted) return;
+    if (bookmarks.includes(algorithm.slug)) {
+      setBookmarks(bookmarks.filter((s) => s !== algorithm.slug));
+    } else {
+      setBookmarks([...bookmarks, algorithm.slug]);
     }
   };
 
@@ -120,13 +105,13 @@ export default function AlgorithmPageClient({ algorithm }: AlgorithmPageClientPr
               <button
                 onClick={toggleBookmark}
                 className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold border rounded-xl transition-all cursor-pointer ${
-                  isBookmarked
+                  showBookmarked
                     ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-600/10"
                     : "bg-white border-zinc-200 dark:bg-zinc-900 dark:border-zinc-850 hover:bg-zinc-50 dark:hover:bg-zinc-850 text-zinc-700 dark:text-zinc-300"
                 }`}
               >
-                <Bookmark size={14} className={isBookmarked ? "fill-current text-white" : ""} />
-                <span>{isBookmarked ? "বুকমার্কড" : "বুকমার্ক করুন"}</span>
+                <Bookmark size={14} className={showBookmarked ? "fill-current text-white" : ""} />
+                <span>{showBookmarked ? "বুকমার্কড" : "বুকমার্ক করুন"}</span>
               </button>
 
               <button

@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Sun, Moon, Bookmark, Search, GraduationCap } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useAtom } from "jotai";
+import { themeAtom } from "@/lib/store";
 
 interface NavbarProps {
   searchQuery?: string;
@@ -11,7 +13,8 @@ interface NavbarProps {
 }
 
 export function Navbar({ searchQuery: externalSearchQuery, onSearchChange }: NavbarProps) {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [theme, setTheme] = useAtom(themeAtom);
+  const [mounted, setMounted] = useState(false);
   const [localSearchQuery, setLocalSearchQuery] = useState("");
   const router = useRouter();
 
@@ -20,28 +23,21 @@ export function Navbar({ searchQuery: externalSearchQuery, onSearchChange }: Nav
   const setSearchQuery = isControlled ? onSearchChange : setLocalSearchQuery;
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-
-    if (savedTheme === "dark" || (!savedTheme && prefersDark)) {
-      setTheme("dark");
-      document.documentElement.classList.add("dark");
-    } else {
-      setTheme("light");
-      document.documentElement.classList.remove("dark");
-    }
+    setMounted(true);
   }, []);
 
-  const toggleTheme = () => {
-    if (theme === "light") {
-      setTheme("dark");
-      localStorage.setItem("theme", "dark");
-      document.documentElement.classList.add("dark");
-    } else {
-      setTheme("light");
-      localStorage.setItem("theme", "light");
-      document.documentElement.classList.remove("dark");
+  useEffect(() => {
+    if (mounted) {
+      if (theme === "dark") {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
     }
+  }, [theme, mounted]);
+
+  const toggleTheme = () => {
+    setTheme(theme === "light" ? "dark" : "light");
   };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -50,7 +46,6 @@ export function Navbar({ searchQuery: externalSearchQuery, onSearchChange }: Nav
       router.push(`/?search=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
-
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-zinc-200/80 dark:border-zinc-800/80 bg-white/80 dark:bg-[#080c14]/85 backdrop-blur-md transition-colors duration-300">
@@ -95,10 +90,10 @@ export function Navbar({ searchQuery: externalSearchQuery, onSearchChange }: Nav
           </Link>
           <button
             onClick={toggleTheme}
-            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-100 transition-all"
-            title={theme === "light" ? "ডার্ক মোড" : "লাইট মোড"}
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-100 transition-all cursor-pointer"
+            title={mounted ? (theme === "light" ? "ডার্ক মোড" : "লাইট মোড") : "থিম লোড হচ্ছে"}
           >
-            {theme === "light" ? <Moon size={17} /> : <Sun size={17} />}
+            {mounted ? (theme === "light" ? <Moon size={17} /> : <Sun size={17} />) : <div className="w-[17px] h-[17px]" />}
           </button>
         </div>
       </div>
