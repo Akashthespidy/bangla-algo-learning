@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Play, Pause, RotateCcw, ChevronLeft, ChevronRight, Sliders, PlayCircle, HelpCircle } from "lucide-react";
+import { Play, Pause, RotateCcw, ChevronLeft, ChevronRight, Sliders, PlayCircle, HelpCircle, Repeat } from "lucide-react";
 import { ArrayVisualizer } from "./visualizers/ArrayVisualizer";
 import { GridVisualizer } from "./visualizers/GridVisualizer";
 import { TreeVisualizer } from "./visualizers/TreeVisualizer";
@@ -29,6 +29,7 @@ export function VisualizerContainer({
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState(800); // ms
   const [error, setError] = useState("");
+  const [isLooping, setIsLooping] = useState(false);
 
   const isSearching = category.toLowerCase().includes("search");
   const isDP = visualizerType === "grid";
@@ -94,7 +95,7 @@ export function VisualizerContainer({
       });
   }, [slug, defaultInput]);
 
-  // Interval playback control
+  // Interval playback control with auto-loop and replay support
   useEffect(() => {
     let timer: any = null;
     if (isPlaying) {
@@ -103,6 +104,9 @@ export function VisualizerContainer({
           if (prev < steps.length - 1) {
             return prev + 1;
           } else {
+            if (isLooping) {
+              return 0;
+            }
             setIsPlaying(false);
             return prev;
           }
@@ -112,7 +116,7 @@ export function VisualizerContainer({
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [isPlaying, steps.length, speed]);
+  }, [isPlaying, steps.length, speed, isLooping]);
 
   // Form submit handler to update state arrays
   const handleRun = (e: React.FormEvent) => {
@@ -131,25 +135,38 @@ export function VisualizerContainer({
     }
   };
 
-  // Controls actions
-  const handlePlayPause = () => setIsPlaying(!isPlaying);
+  // Controls actions: seamless replay from start if already at the end
+  const handlePlayPause = () => {
+    if (isPlaying) {
+      setIsPlaying(false);
+    } else {
+      if (currentStepIndex >= steps.length - 1) {
+        setCurrentStepIndex(0);
+      }
+      setIsPlaying(true);
+    }
+  };
+
   const handleNext = () => {
     setIsPlaying(false);
     if (currentStepIndex < steps.length - 1) {
       setCurrentStepIndex(currentStepIndex + 1);
     }
   };
+
   const handlePrev = () => {
     setIsPlaying(false);
     if (currentStepIndex > 0) {
       setCurrentStepIndex(currentStepIndex - 1);
     }
   };
+
   const handleReset = () => {
     setIsPlaying(false);
     setCurrentStepIndex(0);
   };
 
+  const isFinished = steps.length > 0 && currentStepIndex >= steps.length - 1;
   const currentStep = steps[currentStepIndex] || null;
 
   return (
@@ -169,6 +186,25 @@ export function VisualizerContainer({
           <p className="leading-relaxed">
             {currentStep?.description || "অ্যালগরিদম শুরু করতে প্লে বাটনে ক্লিক করুন।"}
           </p>
+
+          {isFinished && (
+            <div className="mt-2.5 pt-2 border-t border-zinc-200/50 dark:border-zinc-800/60 flex items-center justify-between flex-wrap gap-2 text-xs">
+              <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1.5">
+                <span>🎉 অ্যালগরিদম ট্রাভার্সাল সমাপ্ত হয়েছে!</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setCurrentStepIndex(0);
+                  setIsPlaying(true);
+                }}
+                className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+              >
+                <RotateCcw size={13} />
+                <span>আবার প্রথম থেকে চালান (Replay)</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Dynamic visualizer renderer */}
@@ -242,11 +278,19 @@ export function VisualizerContainer({
             className={`w-12 h-12 rounded-full flex items-center justify-center text-white shadow-md transition-all duration-200 hover:scale-105 cursor-pointer ${
               isPlaying
                 ? "bg-rose-500 hover:bg-rose-600 shadow-rose-500/20"
+                : isFinished
+                ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20 ring-4 ring-emerald-500/20"
                 : "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/20"
             }`}
-            title={isPlaying ? "থামুন (Pause)" : "চালু করুন (Play)"}
+            title={isPlaying ? "থামুন (Pause)" : isFinished ? "আবার প্রথম থেকে চালান (Replay)" : "চালু করুন (Play)"}
           >
-            {isPlaying ? <Pause size={20} className="fill-white" /> : <Play size={20} className="fill-white ml-0.5" />}
+            {isPlaying ? (
+              <Pause size={20} className="fill-white" />
+            ) : isFinished ? (
+              <RotateCcw size={20} className="text-white" />
+            ) : (
+              <Play size={20} className="fill-white ml-0.5" />
+            )}
           </button>
           <button
             onClick={handleNext}
@@ -255,6 +299,17 @@ export function VisualizerContainer({
             title="পরবর্তী ধাপ (Next Step)"
           >
             <ChevronRight size={18} />
+          </button>
+          <button
+            onClick={() => setIsLooping(!isLooping)}
+            className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all cursor-pointer ${
+              isLooping
+                ? "bg-indigo-500/15 border-indigo-500/40 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm"
+                : "border-zinc-200 dark:border-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-900/50"
+            }`}
+            title={isLooping ? "অটো-লুপ চালু আছে (Loop On)" : "অটো-লুপ চালু করুন (Loop Off)"}
+          >
+            <Repeat size={16} className={isLooping ? "text-indigo-600 dark:text-indigo-400 stroke-[2.5]" : ""} />
           </button>
         </div>
 
