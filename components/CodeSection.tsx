@@ -42,56 +42,118 @@ export function CodeSection({ code }: CodeSectionProps) {
   const renderHighlightedLine = (line: string) => {
     if (!line.trim()) return <span>&nbsp;</span>;
 
+    const isPython = activeTab === "python";
+
     // Fast check for pure comment lines
-    if (line.trim().startsWith("//") || line.trim().startsWith("#")) {
+    if (line.trim().startsWith("//") || (isPython && line.trim().startsWith("#"))) {
       return <span className="text-zinc-500 italic">{line}</span>;
     }
 
-    // Tokenize strings, comments, keywords, types, functions, and numbers
-    const tokenRegex = /(\/\/.*|#.*|"(?:\\.|[^\\"])*"|'(?:\\.|[^\\'])*'|`[^`]*`|\b(?:const|let|var|function|return|for|while|if|else|class|def|import|export|from|int|float|double|char|void|struct|public|private|protected|using|namespace|include|std|vector|cout|cin|endl)\b|\b(?:true|false|null|undefined|self|None|print|printf|size_t|bool)\b|\b[a-zA-Z_]\w*(?=\()|\b\d+\b)/g;
+    // Comprehensive token pattern without group split duplication
+    const tokenRegex = isPython
+      ? /(#.*|"(?:\\.|[^\\"\n])*"|'(?:\\.|[^\\'\n])*'|`[^`]*`|\b(?:def|class|return|for|while|if|elif|else|in|is|not|and|or|import|from|as|pass|break|continue|try|except|finally|raise|with|lambda|yield|global|nonlocal)\b|\b(?:True|False|None|self|print|len|range|int|float|str|list|dict|set|tuple|bool)\b|\b[a-zA-Z_]\w*(?=\s*\()|\b\d+(?:\.\d+)?(?:e[+-]?\d+)?\b)/g
+      : /(\/\/.*|#(?:include|define|undef|ifdef|ifndef|endif|pragma)\b|<[a-zA-Z0-9_.\/]+>|"(?:\\.|[^\\"\n])*"|'(?:\\.|[^\\'\n])*'|`[^`]*`|\b(?:const|let|var|function|return|for|while|if|else|class|import|export|from|using|namespace|public|private|protected|struct|continue|break|switch|case|default|new|delete|typedef)\b|\b(?:int|float|double|char|void|bool|size_t|vector|string|long|short|unsigned|signed|auto|Array|Set|Map)\b|\b(?:std|cout|cin|endl|true|false|null|undefined|None|print|printf|scanf|require|console|push_back|push|pop|fill|length|size)\b|\b[a-zA-Z_]\w*(?=\s*\()|\b\d+(?:\.\d+)?(?:e[+-]?\d+)?\b)/g;
 
-    const parts = line.split(tokenRegex);
-    const matches = line.match(tokenRegex) || [];
+    const elements: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
 
-    let matchIdx = 0;
-    return parts.map((part, pIdx) => {
-      // Find matches in sequence
-      if (
-        matchIdx < matches.length &&
-        line.indexOf(matches[matchIdx], parts.slice(0, pIdx).join("").length) === parts.slice(0, pIdx).join("").length
-      ) {
-        const token = matches[matchIdx];
-        matchIdx++;
+    while ((match = tokenRegex.exec(line)) !== null) {
+      const matchIndex = match.index;
+      const token = match[0];
 
-        // Color coding tokens
-        if (token.startsWith("//") || token.startsWith("#")) {
-          return <span key={pIdx} className="text-zinc-500 italic">{token}</span>;
-        }
-        if (token.startsWith('"') || token.startsWith("'") || token.startsWith("`")) {
-          return <span key={pIdx} className="text-amber-500 dark:text-amber-400">{token}</span>;
-        }
-        if (
-          /\b(?:const|let|var|function|return|for|while|if|else|class|def|import|export|from|int|float|double|char|void|struct|public|private|protected|using|namespace|include|std|vector|cout|cin|endl)\b/.test(
-            token
-          )
-        ) {
-          return (
-            <span key={pIdx} className="text-rose-500 dark:text-rose-400 font-medium">
-              {token}
-            </span>
-          );
-        }
-        if (/\b(?:true|false|null|undefined|self|None|print|printf|size_t|bool)\b/.test(token)) {
-          return <span key={pIdx} className="text-indigo-400 dark:text-indigo-400 font-medium">{token}</span>;
-        }
-        if (/\b\d+\b/.test(token)) {
-          return <span key={pIdx} className="text-amber-500 dark:text-yellow-500">{token}</span>;
-        }
-        // Function names
-        return <span key={pIdx} className="text-sky-400 dark:text-sky-400">{token}</span>;
+      // Add preceding plain text
+      if (matchIndex > lastIndex) {
+        elements.push(
+          <span key={`plain-${lastIndex}`} className="text-zinc-300 dark:text-zinc-300">
+            {line.slice(lastIndex, matchIndex)}
+          </span>
+        );
       }
-      return <span key={pIdx} className="text-zinc-300 dark:text-zinc-300">{part}</span>;
-    });
+
+      // Add highlighted token
+      if (token.startsWith("//") || (isPython && token.startsWith("#"))) {
+        elements.push(
+          <span key={`tok-${matchIndex}`} className="text-zinc-500 italic">
+            {token}
+          </span>
+        );
+      } else if (token.startsWith("#")) {
+        elements.push(
+          <span key={`tok-${matchIndex}`} className="text-purple-400 dark:text-purple-400 font-semibold">
+            {token}
+          </span>
+        );
+      } else if (token.startsWith("<") && token.endsWith(">")) {
+        elements.push(
+          <span key={`tok-${matchIndex}`} className="text-emerald-400 dark:text-emerald-400 font-mono">
+            {token}
+          </span>
+        );
+      } else if (token.startsWith('"') || token.startsWith("'") || token.startsWith("`")) {
+        elements.push(
+          <span key={`tok-${matchIndex}`} className="text-amber-400 dark:text-amber-400">
+            {token}
+          </span>
+        );
+      } else if (
+        /\b(?:const|let|var|function|return|for|while|if|elif|else|class|def|import|export|from|using|namespace|public|private|protected|struct|continue|break|switch|case|default|new|delete|typedef|in|is|not|and|or|as|pass|try|except|finally|raise|with|lambda|yield|global|nonlocal)\b/.test(
+          token
+        )
+      ) {
+        elements.push(
+          <span key={`tok-${matchIndex}`} className="text-rose-400 dark:text-rose-400 font-medium">
+            {token}
+          </span>
+        );
+      } else if (
+        /\b(?:int|float|double|char|void|bool|size_t|vector|string|long|short|unsigned|signed|auto|Array|Set|Map|str|list|dict|tuple)\b/.test(
+          token
+        )
+      ) {
+        elements.push(
+          <span key={`tok-${matchIndex}`} className="text-sky-400 dark:text-sky-400 font-medium">
+            {token}
+          </span>
+        );
+      } else if (
+        /\b(?:std|cout|cin|endl|true|false|True|False|null|undefined|self|None|print|printf|scanf|require|console|push_back|push|pop|fill|length|size|len|range)\b/.test(
+          token
+        )
+      ) {
+        elements.push(
+          <span key={`tok-${matchIndex}`} className="text-indigo-400 dark:text-indigo-400 font-medium">
+            {token}
+          </span>
+        );
+      } else if (/\b\d+(?:\.\d+)?(?:e[+-]?\d+)?\b/.test(token)) {
+        elements.push(
+          <span key={`tok-${matchIndex}`} className="text-amber-400 dark:text-yellow-400">
+            {token}
+          </span>
+        );
+      } else {
+        // Function names
+        elements.push(
+          <span key={`tok-${matchIndex}`} className="text-sky-300 dark:text-sky-300">
+            {token}
+          </span>
+        );
+      }
+
+      lastIndex = tokenRegex.lastIndex;
+    }
+
+    // Add trailing plain text
+    if (lastIndex < line.length) {
+      elements.push(
+        <span key={`plain-${lastIndex}`} className="text-zinc-300 dark:text-zinc-300">
+          {line.slice(lastIndex)}
+        </span>
+      );
+    }
+
+    return elements;
   };
 
   const codeLines = activeCode.split("\n");
