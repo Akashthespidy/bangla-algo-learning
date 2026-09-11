@@ -29,6 +29,7 @@ export interface AlgorithmMetadata {
 export interface AlgorithmDetails extends AlgorithmMetadata {
   code: {
     cpp: string;
+    c?: string;
     javascript: string;
     python: string;
   };
@@ -83,7 +84,7 @@ export async function getAlgorithm(slug: string): Promise<AlgorithmDetails | nul
     }
 
     // Try dynamic import, fallback to reading source file as a safe fallback
-    let code = { cpp: "", javascript: "", python: "" };
+    let code: { cpp: string; c?: string; javascript: string; python: string } = { cpp: "", javascript: "", python: "" };
     try {
       // Direct dynamic import works inside Server Components
       const codeModule = await import(`../content/algorithms/${slug}/code`);
@@ -96,11 +97,13 @@ export async function getAlgorithm(slug: string): Promise<AlgorithmDetails | nul
         const content = fs.readFileSync(codeTsPath, "utf-8");
         // We can parse it by matching the string structures
         const cppMatch = content.match(/cpp:\s*`([\s\S]*?)`,/);
+        const cMatch = content.match(/c:\s*`([\s\S]*?)`,/);
         const jsMatch = content.match(/javascript:\s*`([\s\S]*?)`,/);
         const pyMatch = content.match(/python:\s*`([\s\S]*?)`/);
         
         code = {
           cpp: cppMatch ? cppMatch[1].trim() : "",
+          ...(cMatch ? { c: cMatch[1].trim() } : {}),
           javascript: jsMatch ? jsMatch[1].trim() : "",
           python: pyMatch ? pyMatch[1].trim() : ""
         };

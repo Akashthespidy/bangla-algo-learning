@@ -3,16 +3,32 @@
 import React, { useState } from "react";
 import { Check, Copy } from "lucide-react";
 
+type Language = "cpp" | "c" | "javascript" | "python";
+
 interface CodeSectionProps {
   code: {
-    cpp: string;
-    javascript: string;
-    python: string;
+    cpp?: string;
+    c?: string;
+    javascript?: string;
+    python?: string;
   };
 }
 
+const LANGUAGE_LABELS: Record<Language, string> = {
+  cpp: "C++",
+  c: "C",
+  javascript: "JavaScript",
+  python: "Python",
+};
+
 export function CodeSection({ code }: CodeSectionProps) {
-  const [activeTab, setActiveTab] = useState<"cpp" | "javascript" | "python">("cpp");
+  const availableLangs = (["cpp", "c", "javascript", "python"] as Language[]).filter(
+    (lang) => Boolean(code[lang]?.trim())
+  );
+
+  const [activeTab, setActiveTab] = useState<Language>(
+    availableLangs[0] || "cpp"
+  );
   const [copied, setCopied] = useState(false);
 
   const activeCode = code[activeTab] || "";
@@ -85,8 +101,8 @@ export function CodeSection({ code }: CodeSectionProps) {
       {/* Header Tabs */}
       <div className="flex items-center justify-between border-b border-zinc-200/5 dark:border-zinc-800 bg-zinc-900/60 px-4 h-12 shrink-0">
         <div className="flex items-center gap-1.5">
-          {(["cpp", "javascript", "python"] as const).map((lang) => {
-            const label = lang === "cpp" ? "C++" : lang === "javascript" ? "JavaScript" : "Python";
+          {availableLangs.map((lang) => {
+            const label = LANGUAGE_LABELS[lang];
             const isActive = activeTab === lang;
             return (
               <button

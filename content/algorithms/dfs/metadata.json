@@ -4,7 +4,7 @@
   "category": "Graph",
   "categoryBn": "গ্রাফ",
   "difficulty": "Medium",
-  "difficultyBn": "маঝারি",
+  "difficultyBn": "মাঝারি",
   "tags": ["Graph", "Traversal", "DFS", "Recursion"],
   "visualizerType": "graph",
   "timeComplexity": {
