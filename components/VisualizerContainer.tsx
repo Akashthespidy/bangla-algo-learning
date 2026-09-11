@@ -32,9 +32,15 @@ export function VisualizerContainer({
 
   const isSearching = category.toLowerCase().includes("search");
   const isDP = visualizerType === "grid";
+  const isGraph = visualizerType === "graph";
+  const [graphPreset, setGraphPreset] = useState<"maze" | "cycle" | "tree">("maze");
 
   // Parse input depending on the type
-  const parseInput = (text: string, searchTarget?: string) => {
+  const parseInput = (text: string, searchTarget?: string, currentPreset?: string) => {
+    if (isGraph) {
+      return { preset: currentPreset || graphPreset };
+    }
+
     if (isDP) {
       const val = parseInt(text.trim(), 10);
       if (isNaN(val) || val < 1 || val > 12) {
@@ -43,8 +49,7 @@ export function VisualizerContainer({
       return val;
     }
 
-    // Graph/Tree check - usually they have fixed custom inputs or general graph parsing,
-    // but we can offer a simplified flow where we work with comma separated lists or just use defaults.
+    // Array check
     const arr = text
       .split(",")
       .map((x) => parseInt(x.trim(), 10))
@@ -74,7 +79,7 @@ export function VisualizerContainer({
         setGenerateStepsFn(() => mod.generateSteps);
         setError("");
         try {
-          const parsed = parseInput(defaultInput, "5");
+          const parsed = parseInput(defaultInput, "5", graphPreset);
           const generatedSteps = mod.generateSteps(parsed);
           setSteps(generatedSteps);
           setCurrentStepIndex(0);
@@ -85,7 +90,7 @@ export function VisualizerContainer({
       })
       .catch((err) => {
         console.error(`Failed to load visualizer for ${slug}:`, err);
-        setError("ভিজ্যুয়ালাইজার লোд করতে ব্যর্থ হয়েছে।");
+        setError("ভিজ্যুয়ালাইজার লোড করতে ব্যর্থ হয়েছে।");
       });
   }, [slug, defaultInput]);
 
@@ -274,53 +279,131 @@ export function VisualizerContainer({
 
       {/* 3. Input & Timeline Controls */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Custom Input Block */}
+        {/* Custom Input / Graph Preset Block */}
         <div className="lg:col-span-5 bg-white dark:bg-zinc-900/40 p-5 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl shadow-sm">
-          <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-3 flex items-center gap-1.5">
-            নিজে ইনপুট দিন (Customize Input)
-          </h3>
-          <form onSubmit={handleRun} className="flex flex-col gap-3">
-            <div>
-              <label className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500 block mb-1">
-                {isDP ? "ধনাত্মক সংখ্যা (N)" : isSearching ? "কমা দিয়ে আলাদা করা সংখ্যা তালিকা" : "এলোমেলো সংখ্যা তালিকা (Comma-separated)"}
-              </label>
-              <input
-                type="text"
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                className="w-full h-10 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/20 text-sm placeholder:text-zinc-400 focus:outline-none focus:border-indigo-500 font-mono transition-colors"
-                placeholder={isDP ? "যেমন: ৬" : "যেমন: ৮, ২, ৫, ১, ৪"}
-              />
-            </div>
-
-            {isSearching && (
-              <div>
-                <label className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500 block mb-1">
-                  খোঁজার মান (Target Value)
-                </label>
-                <input
-                  type="number"
-                  value={targetVal}
-                  onChange={(e) => setTargetVal(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/20 text-sm placeholder:text-zinc-400 focus:outline-none focus:border-indigo-500 font-mono transition-colors"
-                  placeholder="যেমন: ৫"
-                />
-              </div>
-            )}
-
-            {error && (
-              <p className="text-xs text-rose-500 bg-rose-500/10 p-2.5 rounded-lg border border-rose-500/20">
-                {error}
+          {isGraph ? (
+            <div className="flex flex-col gap-3">
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center justify-between">
+                <span>গ্রাফের ধরণ নির্বাচন করুন</span>
+                <span className="text-[10px] text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 font-bold">
+                  🏃‍♂️ আক্কাস ভাই
+                </span>
+              </h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                যে গ্রাফে আক্কাস ভাইয়ের DFS ট্রাভার্সাল দেখতে চান তা নির্বাচন করুন:
               </p>
-            )}
 
-            <button
-              type="submit"
-              className="w-full h-10 mt-1 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-950 text-xs font-semibold tracking-wider transition-colors cursor-pointer"
-            >
-              রান করুন (Run Algorithm)
-            </button>
-          </form>
+              <div className="space-y-2 pt-1">
+                {[
+                  {
+                    id: "maze",
+                    title: "🏰 আক্কাস ভাইয়ের গোলকধাঁধা",
+                    desc: "৬টি ঘর ও সুরঙ্গ — গল্প ও কোডের আসল ট্রাভার্সাল",
+                  },
+                  {
+                    id: "cycle",
+                    title: "🔄 চক্র গ্রাফ (Cycle Graph)",
+                    desc: "৪টি ঘর — লুপ বা চক্র শনাক্তকরণের সিমুলেশন",
+                  },
+                  {
+                    id: "tree",
+                    title: "🌲 ট্রি গ্রাফ (Tree Graph)",
+                    desc: "৭টি ঘর — শাখা-প্রশাখায় ডেপথ ফার্স্ট ট্রাভার্সাল",
+                  },
+                ].map((item) => {
+                  const isSelected = graphPreset === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        const newPreset = item.id as "maze" | "cycle" | "tree";
+                        setGraphPreset(newPreset);
+                        setIsPlaying(false);
+                        if (generateStepsFn) {
+                          try {
+                            const newSteps = generateStepsFn({ preset: newPreset });
+                            setSteps(newSteps);
+                            setCurrentStepIndex(0);
+                            setError("");
+                          } catch (err: any) {
+                            setError(err.message || "ধাপ তৈরি করা যায়নি");
+                          }
+                        }
+                      }}
+                      className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer ${
+                        isSelected
+                          ? "bg-indigo-500/10 border-indigo-500/50 text-indigo-700 dark:text-indigo-300 shadow-sm"
+                          : "bg-zinc-50/50 dark:bg-zinc-950/20 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-700 dark:text-zinc-300"
+                      }`}
+                    >
+                      <div className="font-semibold text-xs flex items-center justify-between">
+                        <span>{item.title}</span>
+                        {isSelected && (
+                          <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                        )}
+                      </div>
+                      <div className="text-[11px] text-zinc-400 mt-0.5 font-normal">
+                        {item.desc}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <>
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-3 flex items-center gap-1.5">
+                নিজে ইনপুট দিন (Customize Input)
+              </h3>
+              <form onSubmit={handleRun} className="flex flex-col gap-3">
+                <div>
+                  <label className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500 block mb-1">
+                    {isDP
+                      ? "ধনাত্মক সংখ্যা (N)"
+                      : isSearching
+                      ? "কমা দিয়ে আলাদা করা সংখ্যা তালিকা"
+                      : "এলোমেলো সংখ্যা তালিকা (Comma-separated)"}
+                  </label>
+                  <input
+                    type="text"
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    className="w-full h-10 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/20 text-sm placeholder:text-zinc-400 focus:outline-none focus:border-indigo-500 font-mono transition-colors"
+                    placeholder={isDP ? "যেমন: ৬" : "যেমন: ৮, ২, ৫, ১, ৪"}
+                  />
+                </div>
+
+                {isSearching && (
+                  <div>
+                    <label className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500 block mb-1">
+                      খোঁজার মান (Target Value)
+                    </label>
+                    <input
+                      type="number"
+                      value={targetVal}
+                      onChange={(e) => setTargetVal(e.target.value)}
+                      className="w-full h-10 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/20 text-sm placeholder:text-zinc-400 focus:outline-none focus:border-indigo-500 font-mono transition-colors"
+                      placeholder="যেমন: ৫"
+                    />
+                  </div>
+                )}
+
+                {error && (
+                  <p className="text-xs text-rose-500 bg-rose-500/10 p-2.5 rounded-lg border border-rose-500/20">
+                    {error}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  className="w-full h-10 mt-1 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-950 text-xs font-semibold tracking-wider transition-colors cursor-pointer"
+                >
+                  রান করুন (Run Algorithm)
+                </button>
+              </form>
+            </>
+          )}
         </div>
 
         {/* Step Timeline Block */}
